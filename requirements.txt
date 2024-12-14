@@ -1,0 +1,10 @@
+tqdm==4.64.1
+time
+binance==1.1.10
+dotenv==0.20.0
+dataclasses==0.8
+typing-extensions==4.5.0  # Para garantir compatibilidade com dataclasses
+pandas==1.5.2
+numpy==1.24.3
+scipy==1.10.0
+multiprocessing==3.4.0
