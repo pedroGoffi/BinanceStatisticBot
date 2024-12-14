@@ -1,0 +1,13 @@
+
+
+# Arquivos gerados por Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+
+# Arquivos específicos do ambiente virtual
+env/
+.env
