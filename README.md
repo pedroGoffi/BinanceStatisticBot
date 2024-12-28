@@ -45,7 +45,7 @@ python main.py
 ## Estrutura do Código
 - **main.py**: Script principal que inicializa a conexão API, coleta dados e executa as funções de cálculo.
 - **crypto_analysis.py**: Módulo que contém todas as funções de cálculo de indicadores técnicos e análise de suporte/resistência.
-- **utils.py**: Funções auxiliares, como cálculos de médias móveis, RSI, MACD, Z-Score, suporte e resistência, e cálculo de volume.
+
 
 ## Exemplo de Uso
 O script executa uma análise automática das criptomoedas com base nos dados coletados e retorna uma lista de criptomoedas com potencial de ganho alto (superior ao limite de `GAIN_THRESHOLD`).
