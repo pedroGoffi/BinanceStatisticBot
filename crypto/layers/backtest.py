@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Dict, Tuple
-from crypto.layers.kernel import ITradeKernel
+from crypto.layers.kernel import ITradeKernel, StrategyResult
 from crypto.layers.logger import Logger
 from .preprocess import ChartData, CryptoCurrency, CryptoCurrencyHistory
 
@@ -27,11 +27,18 @@ class MetricsCollector:
         """
         return self.metrics
 
+@dataclass 
+class StrategyResultSubset:
+    iteration:                  int 
+    interval:                   int 
+    subset_strategy_result:     StrategyResult
+    
 @dataclass
 class SimulationResult:
-    initial_cash:   float 
-    final_cash:     float 
-    win_rate:       float 
+    initial_cash:               float 
+    final_cash:                 float 
+    win_rate:                   float 
+    strategy_result_in_subset:  List[StrategyResultSubset]
 
 class ISimulationFramework:
     kernel: ITradeKernel
@@ -60,15 +67,25 @@ class SimulationFramework(ISimulationFramework):
         """
 
     
-        crypto          = self.kernel.crypto  # Use the single cryptocurrency instance
-        chart_data      = crypto.history.chart
+        
         sma_interval    = 15
         rsi_interval    = 15
         final_cash      = initial_cash
         win_rate        = 0
-        # TODO make a strategy in here 
-        
-        return SimulationResult(initial_cash=initial_cash, final_cash=final_cash, win_rate=win_rate)
+
+        intervals: int = 15
+        strategy_result_in_subset: List[StrategyResult] = []
+        for i in range(0, len(self.kernel.crypto.history.chart), intervals):
+            chart_subset = self.kernel.crypto.history.chart[i:i + intervals]
+            subset_strategy_result: StrategyResult = self.kernel.analyze_market(chart_subset=chart_subset)
+            strategy_result_in_subset.append(StrategyResultSubset(iteration=i, interval=intervals, subset_strategy_result=subset_strategy_result))
+
+        return SimulationResult(
+            initial_cash=initial_cash, 
+            final_cash=final_cash, 
+            win_rate=win_rate,
+            strategy_result_in_subset = strategy_result_in_subset
+        )
 
 #NOTE: created this more as a template for especific return that i'll change in the future
 @dataclass

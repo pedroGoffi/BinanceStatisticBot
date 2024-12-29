@@ -1,7 +1,7 @@
 from typing import Callable, Any, Dict, List
 from .logger import Logger
 from dataclasses import dataclass
-from .preprocess import CryptoCurrency
+from .preprocess import CryptoCurrency, ChartData
 
 
 @dataclass
@@ -11,7 +11,7 @@ class Indicators:
     """
     crypto: CryptoCurrency
     logger: Logger
-    indicators: Dict[str, Callable[[int], Any]]
+    indicators: Dict[str, Callable[[List[ChartData], int], Any]]  # Modified to accept chart_subset
 
     def __init__(self, crypto: CryptoCurrency, logger: Logger):
         self.crypto = crypto
@@ -28,21 +28,17 @@ class Indicators:
         self.indicators["sma"] = self._calculate_sma
         self.indicators["ema"] = self._calculate_ema
 
-    def _get_price_history(self) -> List[float]:
+    def _get_price_history(self, chart_subset: List[ChartData]) -> List[float]:
         """
-        Extracts the price history from self.crypto.history.history.
+        Extracts the price history (close prices) from the given chart subset.
         """
-        if not self.crypto.history or not self.crypto.history.chart:
-            raise ValueError("No historical data available.")
-        
-    
-        return [snapshot.close for snapshot in self.crypto.history.chart]
+        return [snapshot.close for snapshot in chart_subset]
 
-    def _calculate_macd(self, interval: int) -> dict:
+    def _calculate_macd(self, chart_subset: List[ChartData], interval: int) -> dict:
         """
-        Calculates the MACD indicator using the price history.
+        Calculates the MACD indicator using the given chart subset.
         """
-        prices = self._get_price_history()
+        prices = self._get_price_history(chart_subset)
         short_period = interval
         long_period = interval * 2
         signal_period = interval // 2
@@ -67,11 +63,11 @@ class Indicators:
             "Histogram":        histogram
         }
 
-    def _calculate_rsi(self, interval: int) -> float:
+    def _calculate_rsi(self, chart_subset: List[ChartData], interval: int) -> float:
         """
-        Calculates the RSI indicator using the price history.
+        Calculates the RSI indicator using the given chart subset.
         """
-        prices = self._get_price_history()
+        prices = self._get_price_history(chart_subset)
         if len(prices) < interval:
             self.logger.error(f"Not enough data to calculate RSI in crypto: {self.crypto.symbol}")
             return 0.0
@@ -86,22 +82,22 @@ class Indicators:
         rs = avg_gain / avg_loss
         return 100 - (100 / (1 + rs))
 
-    def _calculate_sma(self, interval: int) -> float:
+    def _calculate_sma(self, chart_subset: List[ChartData], interval: int) -> float:
         """
-        Calculates the SMA indicator using the price history.
+        Calculates the SMA indicator using the given chart subset.
         """
-        prices = self._get_price_history()
+        prices = self._get_price_history(chart_subset)
         if len(prices) < interval:
             self.logger.error(f"Not enough data to calculate SMA in crypto: {self.crypto.symbol}")
             return 0.0
 
         return sum(prices[-interval:]) / interval
 
-    def _calculate_ema(self, interval: int) -> float:
+    def _calculate_ema(self, chart_subset: List[ChartData], interval: int) -> float:
         """
-        Calculates the EMA indicator using the price history.
+        Calculates the EMA indicator using the given chart subset.
         """
-        prices = self._get_price_history()
+        prices = self._get_price_history(chart_subset)
         if len(prices) < interval:
             self.logger.error(f"Not enough data to calculate EMA in crypto: {self.crypto.symbol}")
             return 0.0
@@ -113,17 +109,20 @@ class Indicators:
 
         return ema
 
-    def add_indicator(self, name: str, processor: Callable[[int], Any]) -> None:
+    def add_indicator(self, name: str, processor: Callable[[List[ChartData], int], Any]) -> None:
         """
         Adds a custom indicator to the class.
         """
         self.indicators[name] = processor
 
-    def get(self, name: str, interval: int = 14) -> Any:
+    def get(self, name: str, interval: int = 14, chart_subset: List[ChartData] = None) -> Any:
         """
-        Retrieves and computes an indicator based on its name and interval.
+        Retrieves and computes an indicator based on its name, interval, and chart subset.
         """
         if name not in self.indicators:
             raise ValueError(f"Indicator '{name}' is not available.")
-
-        return self.indicators[name](interval)
+        
+        if chart_subset is None:
+            raise ValueError("Chart data must be provided for indicator calculation.")
+        
+        return self.indicators[name](chart_subset, interval)

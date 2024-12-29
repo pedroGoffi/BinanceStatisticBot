@@ -15,7 +15,7 @@ Versão: 1.0
 """
 
 
-
+import pprint
 from binance.client         import Client
 from dotenv                 import load_dotenv
 from crypto.layers.kernel import ITradeKernel, StrategyOne
@@ -81,7 +81,7 @@ def main():
         
         
         logger.debug("*" * 50)
-        logger.debug(results)
+        pprint.pprint(results)
                                                          
         
         
