@@ -1,53 +1,8 @@
 from dataclasses import dataclass
 from typing import List, Dict, Tuple
-
 from crypto.layers.kernel import ITradeKernel
 from crypto.layers.logger import Logger
-from .preprocess import CryptoCurrency, CryptoCurrencyHistory
-
-class BacktestEngine:
-    """
-    Simulates strategy performance on historical data.
-    """
-    def __init__(self, crypto_histories: List[CryptoCurrencyHistory]):
-        self.crypto_histories = crypto_histories
-
-    def simulate_strategy(self, symbol: str, initial_cash: float, buy_threshold: float, sell_threshold: float) -> Tuple[float, List[str]]:
-        """
-        Simulates a buy/sell strategy using historical price data.
-        :param symbol: The cryptocurrency symbol to simulate.
-        :param buy_threshold: Price drop percentage to trigger a buy.
-        :param sell_threshold: Price rise percentage to trigger a sell.
-        :return: Tuple of total profit and a list of trades executed.
-        """
-        crypto_history = next((ch for ch in self.crypto_histories if ch.symbol == symbol), None)
-        if not crypto_history:
-            raise ValueError(f"No historical data found for symbol {symbol}")
-
-        trades = []
-        cash = initial_cash
-        position = 0  # Number of units held
-
-        for day in crypto_history.history:
-            price = day.current_price
-
-            if position == 0 and price <= buy_threshold:  # Buy condition
-                position = cash / price
-                cash = 0
-                trades.append(f"Bought {position:.2f} {symbol} at ${price:.2f}")
-
-            elif position > 0 and price >= sell_threshold:  # Sell condition
-                cash = position * price
-                position = 0
-                trades.append(f"Sold {symbol} at ${price:.2f}")
-
-        # If position remains unsold, sell at the last known price
-        if position > 0:
-            cash = position * crypto_history.history[-1].current_price
-            trades.append(f"Final sell {symbol} at ${crypto_history.history[-1].current_price:.2f}")
-
-        profit = cash - 1000  # Total profit or loss
-        return profit, trades
+from .preprocess import ChartData, CryptoCurrency, CryptoCurrencyHistory
 
 class MetricsCollector:
     """
@@ -72,34 +27,87 @@ class MetricsCollector:
         """
         return self.metrics
 
-class SimulationFramework:
-    """
-    Runs scenarios using real-time data in sandbox mode.
-    """
+@dataclass
+class SimulationResult:
+    initial_cash:   float 
+    final_cash:     float 
+    win_rate:       float 
+
+class ISimulationFramework:
     kernel: ITradeKernel
     logger: Logger
-    def __init__(self, kernel: ITradeKernel, logger: Logger):
-        self.metrics_collector  = MetricsCollector()
+    name:   str
+
+    @staticmethod
+    def __init__(self, name: str, kernel: ITradeKernel, logger: Logger) -> None: ... 
+
+    @staticmethod
+    def run_simulation(self, initial_cash: float, buy_threshold: float, sell_threshold: float) -> SimulationResult: ...
+
+class SimulationFramework(ISimulationFramework):
+    def __init__(self, name: str, kernel: ITradeKernel, logger: Logger):                        
+        self.name               = name 
         self.kernel             = kernel
-        self.logger             = logger
+        self.logger             = logger        
 
-    def run_simulation(self, buy_threshold: float, sell_threshold: float):
+    def run_simulation(self, initial_cash: float, buy_threshold: float, sell_threshold: float) -> SimulationResult:
         """
-        Simulates a strategy on current market conditions.
-        :param cryptos: List of CryptoCurrency objects to simulate.
-        :param buy_threshold: Buy condition percentage.
-        :param sell_threshold: Sell condition percentage.
+        Analyzes the price trend for the cryptocurrency in self.kernel.crypto using SMA and RSI indicators.
+
+        Args:
+            sma_interval (int): Interval for the SMA calculation.
+            rsi_interval (int): Interval for the RSI calculation.
         """
-        results = []
+
+    
+        crypto          = self.kernel.crypto  # Use the single cryptocurrency instance
+        chart_data      = crypto.history.chart
+        sma_interval    = 15
+        rsi_interval    = 15
+        final_cash      = initial_cash
+        win_rate        = 0
+        # TODO make a strategy in here 
         
-        buy_signals, sell_signals = self.kernel.analyze_market()
-        self.logger.debug((buy_signals, sell_signals, self.kernel.crypto))
-        #price = crypto.current_price
-        #if price <= buy_threshold:
-        #    results.append(f"Simulated Buy: {crypto.symbol} at ${price:.2f}")
-        #elif price >= sell_threshold:
-        #    results.append(f"Simulated Sell: {crypto.symbol} at ${price:.2f}")
+        return SimulationResult(initial_cash=initial_cash, final_cash=final_cash, win_rate=win_rate)
 
-        return results
+#NOTE: created this more as a template for especific return that i'll change in the future
+@dataclass
+class BacktestEngineResult:
+    simulators_results: List[SimulationResult]
+
+class BacktestEngine:
+    """
+    Simulates strategy performance on historical data.
+    """
+    kernel: ITradeKernel
+    simulators: List[ISimulationFramework]
+    logger: Logger
+    def __init__(self, kernel: ITradeKernel, logger: Logger):
+        self.kernel     = kernel
+        self.logger     = logger
+        self.simulators = []
+        
+
+    def atach_simulator(self, simulator: ISimulationFramework) -> None:
+        assert issubclass(simulator.__class__, ISimulationFramework), "Expected simulator to extend ISimulationFramework"
+        if simulator.kernel.crypto.symbol != self.kernel.crypto.symbol:
+            self.logger.critical(f"In BacktestEngine expected self.kernel [{simulator.kernel.crypto.symbol}] be the same simulator.kernel [{self.kernel.crypto.symbol}]")
+            return 
+        self.simulators.append(simulator)
+
+    def run_simulators(self, initial_cash: float, buy_threshold: float, sell_threshold: float) -> BacktestEngineResult:
+        if len(self.simulators) == 0:
+            self.logger.warning(f"Expected a simulator to be atached in order to run simulations in BacktestEngine")
+            return None
 
 
+        simulators_results: List[SimulationResult] = []
+        for simulator in self.simulators:
+            self.logger.debug(f"RUNNING SIMULATOR: {simulator.name}")
+            simulator_result: SimulationResult = simulator.run_simulation(initial_cash=initial_cash, buy_threshold=buy_threshold, sell_threshold=sell_threshold)            
+            simulators_results.append(simulator_result)
+
+        return BacktestEngineResult(
+            simulators_results = simulators_results
+        )
+            

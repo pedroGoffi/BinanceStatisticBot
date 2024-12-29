@@ -11,3 +11,5 @@ __pycache__/
 # Arquivos específicos do ambiente virtual
 env/
 .env
+
+/crypto/layers/data/*

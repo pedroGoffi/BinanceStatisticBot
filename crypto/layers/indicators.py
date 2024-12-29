@@ -1,4 +1,5 @@
 from typing import Callable, Any, Dict, List
+from .logger import Logger
 from dataclasses import dataclass
 from .preprocess import CryptoCurrency
 
@@ -9,11 +10,13 @@ class Indicators:
     A class to manage and compute indicators for a given cryptocurrency.
     """
     crypto: CryptoCurrency
+    logger: Logger
     indicators: Dict[str, Callable[[int], Any]]
 
-    def __init__(self, crypto: CryptoCurrency):
+    def __init__(self, crypto: CryptoCurrency, logger: Logger):
         self.crypto = crypto
-        self.indicators = {}
+        self.logger = logger
+        self.indicators = {}        
         self._initialize_common_indicators()
 
     def _initialize_common_indicators(self) -> None:
@@ -45,7 +48,12 @@ class Indicators:
         signal_period = interval // 2
 
         if len(prices) < long_period:
-            raise ValueError("Not enough data to calculate MACD.")
+            self.logger.error(f"Not enough data to calculate MACD in crypto: {self.crypto.symbol}")
+            return {
+                "MACD_Line":    0,
+                "Signal_Line":  0,
+                "Histogram":    0
+            }            
 
         short_ema = sum(prices[-short_period:]) / short_period
         long_ema = sum(prices[-long_period:]) / long_period
@@ -65,7 +73,8 @@ class Indicators:
         """
         prices = self._get_price_history()
         if len(prices) < interval:
-            raise ValueError("Not enough data to calculate RSI.")
+            self.logger.error(f"Not enough data to calculate RSI in crypto: {self.crypto.symbol}")
+            return 0.0
 
         gains       = [max(prices[i] - prices[i - 1], 0) for i in range(1, len(prices))]
         losses      = [max(prices[i - 1] - prices[i], 0) for i in range(1, len(prices))]
@@ -83,7 +92,8 @@ class Indicators:
         """
         prices = self._get_price_history()
         if len(prices) < interval:
-            raise ValueError("Not enough data to calculate SMA.")
+            self.logger.error(f"Not enough data to calculate SMA in crypto: {self.crypto.symbol}")
+            return 0.0
 
         return sum(prices[-interval:]) / interval
 
@@ -93,7 +103,8 @@ class Indicators:
         """
         prices = self._get_price_history()
         if len(prices) < interval:
-            raise ValueError("Not enough data to calculate EMA.")
+            self.logger.error(f"Not enough data to calculate EMA in crypto: {self.crypto.symbol}")
+            return 0.0
 
         ema = prices[0]  # Initialize with the first price
         multiplier = 2 / (interval + 1)

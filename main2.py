@@ -22,8 +22,8 @@ from crypto.layers.kernel import ITradeKernel, StrategyOne
 from crypto.layers.logger   import Logger
 from crypto.layers          import preprocess
 from crypto.layers.executor import Executor
-from crypto.layers.backtest import SimulationFramework
-from typing import List, Dict
+from crypto.layers.backtest import BacktestEngine, BacktestEngineResult, SimulationFramework
+from typing import List, Dict, Any
 import os
 
 from main import CryptoCurrency
@@ -51,21 +51,40 @@ client: Client = Client(API_KEY, API_SECRET)
 
 
 
-#from crypto.layers import 
-def main():
-    
+context: dict[str, Any] = {}
+def main():    
     #executor: Executor = Executor(client=client, slippage_percentage=0.0, isTest=True)
-    cryptos: List[Dict[str, str]]  = preprocess.load_cryptos(client=client, query=["BTCUSDT"])
-    assert len(cryptos) >= 1
+    
+    query: List[str] = ["BTCUSDT"]
+    cryptos: List[CryptoCurrency]
+    if saved := preprocess.get_saved_cryptos(query):
+        logger.debug("GET SAVED DATA")
+        cryptos = saved
+    else:
+        cryptos_as_dict: List[Dict[str, str]]   = preprocess.load_cryptos(client=client, query=query, currency="USDT")
+        cryptos = preprocess.fast_preprocess_cryptos_dictionary_list(client, cryptos_as_dict, INTERVAL_TO_WATCH, logger)
+        preprocess.save_cryptos(cryptos)
 
-    crypto: CryptoCurrency = preprocess.preprocess_crypto_dictionary(client, cryptos[0], INTERVAL_TO_WATCH)
+            
+    logger.debug(f"Inicializando simulacao")
+    INITIAL_CASH:   float = 500
+    buy_threshold:  float = 0.05
+    sell_threshold: float = 0.10
+    for crypto in cryptos:       
+        kernel:     ITradeKernel        = StrategyOne(logger, crypto)
+        simulator:  SimulationFramework = SimulationFramework("simple simulator", kernel, logger)
+        
+        engine: BacktestEngine = BacktestEngine(kernel, logger)
+        engine.atach_simulator(simulator)
 
-    kernel: ITradeKernel = StrategyOne(logger, crypto)
-    simulator: SimulationFramework = SimulationFramework(kernel, logger)
-    simulator.run_simulation(        
-        buy_threshold   = 0.05,
-        sell_threshold  = 0.10
-    )
+        results: BacktestEngineResult = engine.run_simulators(INITIAL_CASH, buy_threshold, sell_threshold)
+        
+        
+        logger.debug("*" * 50)
+        logger.debug(results)
+                                                         
+        
+        
 
     
 

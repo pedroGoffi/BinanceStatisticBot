@@ -25,7 +25,8 @@ from typing import List, Dict
 
 
 
-def load_cryptos(client: Client, query: List[str] = None) -> List[Dict[str, str]]:
+
+def load_cryptos(client: Client, query: List[str] = None, currency: str = "USDT") -> List[Dict[str, str]]:
     """
     Checks the state of specified cryptocurrencies and returns a list of those with a maximum gain above a certain threshold.
     Args:
@@ -46,9 +47,13 @@ def load_cryptos(client: Client, query: List[str] = None) -> List[Dict[str, str]
     """
 
     if query is None:
-        tickers: List[Dict[str, str]] = client.get_all_tickers()    
+        tickers: List[Dict[str, str]] = client.get_all_tickers()
     else:
         tickers: List[Dict[str, str]] = [client.get_ticker(symbol=symbol) for symbol in query]
+
+    if currency:
+        tickers = [ticker for ticker in tickers if ticker['symbol'].endswith(currency)]
+        
 
     return tickers
     
