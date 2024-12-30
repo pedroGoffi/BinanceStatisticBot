@@ -44,7 +44,7 @@ BUY_SCORE_THRESHOLD:    int     = 2
 SELL_SCOPE_THRESHOLD:   int     = -2
 GAIN_THRESHOLD:         float   = float(os.getenv("GAIN_THRESHOLD"))        or 0.0
 CRYPTO_MAX_PRICE:       float   = float(os.getenv("CRYPTO_MAX_PRICE"))      or 0.0
-WATCH_VAR_MIN_TARGET:   float   = float(os.getenv("WATCH_VAR_MIN_TARGET"))  or 5.0
+WATCH_VAR_MIN_TARGET:   float   = float(os.getenv("WATCH_VAR_MIN_TARGET"))  or 8.0
 INTERVAL_TO_WATCH:      str     = os.getenv("INTERVAL_TO_WATCH")            or '15m'
 WATCH_VAR_MAX_TARGET:   float   = float(os.getenv("WATCH_VAR_MAX_TARGET"))  or 20.0
 API_KEY:                str     = os.getenv("API_KEY")
@@ -64,7 +64,7 @@ class CryptoCurrencyHistory:
     resistance: float
     price_variance: pd.Series = None  # Nova adição
     var_24h: pd.Series = None         # Nova adição
-    momentum: pd.Series = None        # Nova adição
+    
 
 @dataclass
 class CryptoCurrency:
@@ -208,7 +208,7 @@ class CryptoCurrency:
             self.price_variance             = self.crypto_history.macd['price_variance'].iloc[-1]
 
         
-        print(f"[UPDATE: {self.symbol}]:\t\tvariancia desde a ultima atualização: {self.price_variance:.2f} - \tscopre: {self.score} {'✅' if self.score > 0 else '❌'} ")
+        #print(f"[UPDATE: {self.symbol}]:\t\tvariancia desde a ultima atualização: {self.price_variance:.2f} - \tscopre: {self.score} {'✅' if self.score > 0 else '❌'} ")
         if self.score >= 3:
             print(f"🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀")
             
@@ -477,7 +477,7 @@ def get_crypto_history(symbol: str, interval: Literal['15m', '1h', '4h', '1d'] =
             'volume':       float(kline[5]),
             'variance':     price_variance,
             '24h_var':      var_24h,
-            'momentum':     float(kline[4]) - float(prevkline[4]) if prevkline else 0.0
+            
         })
         
     
@@ -496,7 +496,7 @@ def get_crypto_history(symbol: str, interval: Literal['15m', '1h', '4h', '1d'] =
         resistance              =   calculate_support_resistance(history)[1],
         price_variance          =   macd_data['price_variance'],
         var_24h                 =   macd_data['24h_var'],
-        momentum                =   macd_data['momentum']   
+        
     )
 
 predictions = []
